@@ -1,4 +1,4 @@
-﻿const API_BASE = '/api';
+const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || '/api';
 
 export const api = {
   // 1. Dashboard statistics
