@@ -1,10 +1,13 @@
 ﻿from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
+
+MealTypeEnum = Literal["breakfast", "lunch", "snacks", "dinner"]
 
 # 1. Meal Record Schemas
 class MealRecordCreate(BaseModel):
     date: date
+    meal_type: MealTypeEnum = "lunch"
     attendance: int = Field(..., ge=0, description="Number of students on campus")
     meals_prepared: int = Field(..., ge=0, description="Total meals prepared by staff")
     meals_consumed: int = Field(..., ge=0, description="Total meals consumed by students")
@@ -20,9 +23,20 @@ class MealRecordCreate(BaseModel):
             )
         return self
 
+class MealRecordUpdate(BaseModel):
+    date: Optional[date] = None
+    meal_type: Optional[MealTypeEnum] = None
+    attendance: Optional[int] = Field(None, ge=0)
+    meals_prepared: Optional[int] = Field(None, ge=0)
+    meals_consumed: Optional[int] = Field(None, ge=0)
+    is_holiday: Optional[int] = Field(None, ge=0, le=1)
+    is_exam_day: Optional[int] = Field(None, ge=0, le=1)
+    is_event_day: Optional[int] = Field(None, ge=0, le=1)
+
 class MealRecordResponse(BaseModel):
     id: int
     date: date
+    meal_type: str
     day_of_week: str
     attendance: int
     meals_prepared: int
@@ -39,6 +53,7 @@ class MealRecordResponse(BaseModel):
 # 2. Prediction Schemas
 class PredictionRequest(BaseModel):
     date: date
+    meal_type: Optional[MealTypeEnum] = "lunch"
     expected_attendance: int = Field(..., ge=1, le=2000, description="Expected student attendance count")
     is_holiday: Optional[int] = Field(0, ge=0, le=1)
     is_exam_day: Optional[int] = Field(0, ge=0, le=1)
@@ -57,6 +72,7 @@ class SuggestionItem(BaseModel):
 class PredictionResponse(BaseModel):
     id: Optional[int] = None
     date: date
+    meal_type: str = "lunch"
     day_of_week: str
     expected_attendance: int
     predicted_demand: float

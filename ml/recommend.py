@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import pandas as pd
 import numpy as np
@@ -24,6 +24,14 @@ def generate_recommendations(date_str, expected_attendance, is_holiday=0, is_exa
     residual_std = pred_info["residual_std"]  # ~6.27 meals
     weekday_hist_mean = pred_info["weekday_historical_mean"]
     
+    # Event & Holiday Operational Demand Multipliers:
+    # On Campus Fest / Event Days: Walk-in guest turnout, symposium delegates, and extra student appetite (+18% consumption surge)
+    # On Holidays: Day scholars are absent; consumption is restricted to 50-60% of baseline (55% hostel dining rate)
+    if is_event_day:
+        predicted_demand = round(predicted_demand * 1.18, 1)
+    elif is_holiday:
+        predicted_demand = round(predicted_demand * 0.55, 1)
+
     # 2. Safety Buffer Calculation
     # Canteen goal: prevent food stockout (under-cooking) without causing massive waste.
     # We use a 1.0 sigma residual buffer (covers ~84% of upside variance), capped appropriately.
@@ -31,13 +39,14 @@ def generate_recommendations(date_str, expected_attendance, is_holiday=0, is_exa
     
     # Context adjustments to buffer
     if is_event_day:
-        # Higher uncertainty on campus fest/event days
-        buffer = int(base_buffer * 1.5)
+        # Higher uncertainty on campus fest/event days: increased buffer
+        buffer = int(base_buffer * 1.8)
     elif day_name == "Friday":
         # Friday is a high-waste day; tighten buffer to prevent routine excess
         buffer = max(3, int(base_buffer * 0.7))
     elif is_holiday:
-        buffer = 2
+        # Holiday has minimal variance and small headcount; minimal buffer
+        buffer = max(1, int(base_buffer * 0.4))
     else:
         buffer = int(base_buffer)
         
@@ -107,17 +116,30 @@ def generate_recommendations(date_str, expected_attendance, is_holiday=0, is_exa
         explanations.append({
             "type": "warning",
             "icon": "alert-circle",
-            "text": "Campus event day detected: Higher walk-in rate factored into prediction."
+            "text": "Campus Fest / Event Surge (+18%): Increased walk-in rate, guest delegates, and extended dining hours factored into elevated production target."
         })
     if is_holiday:
         explanations.append({
             "type": "warning",
             "icon": "alert-circle",
-            "text": "Academic holiday detected: Baseline restricted to hostel student dining."
+            "text": "Academic Holiday Schedule (50-60% of normal): Day-scholar attendance absent; preparation calibrated at 55% baseline for residential hostel students."
         })
 
     # 4. Actionable Waste-Reduction Suggestions (Rule Layer)
     suggestions = []
+    
+    if is_holiday:
+        suggestions.append({
+            "level": "caution",
+            "title": "Holiday Production Downscaling",
+            "message": "Campus is on holiday schedule. Downscaled meals produced to match hostel-only demand to prevent large batch spoilage."
+        })
+    elif is_event_day:
+        suggestions.append({
+            "level": "info",
+            "title": "Event Surge & Batch Staggering",
+            "message": "Elevated meals produced due to campus event. Stagger preparation into 2 batches (65% early, 35% supplementary) to meet peak turnout without overproducing."
+        })
     
     # Friday Specific Anomaly
     if day_name == "Friday":

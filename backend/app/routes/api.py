@@ -1,25 +1,26 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from ..database.connection import get_db
 from ..schemas.dto import (
-    MealRecordCreate, MealRecordResponse, PredictionRequest,
+    MealRecordCreate, MealRecordUpdate, MealRecordResponse, PredictionRequest,
     PredictionResponse, DashboardStatistics, WeekdayPattern, ModelMetricResponse
 )
 from ..services.canteen_service import CanteenService
 
 router = APIRouter(prefix="/api", tags=["Canteen Operations"])
 
-# --- 1. Meal Records Endpoints ---
+# --- 1. Meal Records Endpoints (CRUD) ---
 @router.get("/records", response_model=List[MealRecordResponse])
 def get_meal_records(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    meal_type: Optional[str] = Query(None, description="Filter by breakfast, lunch, snacks, dinner"),
     db: Session = Depends(get_db)
 ):
-    """Retrieve operational meal records sorted chronologically descending."""
-    return CanteenService.get_records(db, limit=limit, offset=offset)
+    """Retrieve operational meal records with optional meal_type filter."""
+    return CanteenService.get_records(db, limit=limit, offset=offset, meal_type=meal_type)
 
 @router.get("/records/{record_id}", response_model=MealRecordResponse)
 def get_meal_record(record_id: int, db: Session = Depends(get_db)):
@@ -31,9 +32,20 @@ def get_meal_record(record_id: int, db: Session = Depends(get_db)):
 
 @router.post("/records", response_model=MealRecordResponse, status_code=status.HTTP_201_CREATED)
 def create_meal_record(record_in: MealRecordCreate, db: Session = Depends(get_db)):
-    """Log a daily operational record with automatic day-of-week and waste derivation."""
+    """Log a daily operational record with meal slot and automatic derivations."""
     try:
         return CanteenService.create_record(db, record_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/records/{record_id}", response_model=MealRecordResponse)
+def update_meal_record(record_id: int, record_in: MealRecordUpdate, db: Session = Depends(get_db)):
+    """Update/modify an existing meal record."""
+    try:
+        updated = CanteenService.update_record(db, record_id, record_in)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Meal record not found.")
+        return updated
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -48,7 +60,7 @@ def delete_meal_record(record_id: int, db: Session = Depends(get_db)):
 # --- 2. Predictions & Recommendations Endpoints ---
 @router.post("/predict", response_model=PredictionResponse)
 def predict_demand_and_recommend(req: PredictionRequest, db: Session = Depends(get_db)):
-    """Generate tomorrow's meal demand forecast, safety buffer, and waste reduction advice."""
+    """Generate meal slot forecast, safety buffer, and waste reduction advice."""
     try:
         return CanteenService.predict_and_recommend(db, req)
     except Exception as e:

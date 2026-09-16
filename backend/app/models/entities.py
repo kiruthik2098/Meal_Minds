@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, Float, String, Date, DateTime, Boolean, Text, CheckConstraint
+﻿from sqlalchemy import Column, Integer, Float, String, Date, DateTime, Boolean, Text, CheckConstraint, UniqueConstraint
 from datetime import datetime
 from ..database.connection import Base
 
@@ -6,7 +6,8 @@ class MealRecord(Base):
     __tablename__ = "meal_records"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    date = Column(Date, unique=True, index=True, nullable=False)
+    date = Column(Date, index=True, nullable=False)
+    meal_type = Column(String(20), nullable=False, default="lunch")  # breakfast, lunch, snacks, dinner
     day_of_week = Column(String(20), nullable=False)
     attendance = Column(Integer, nullable=False)
     meals_prepared = Column(Integer, nullable=False)
@@ -18,6 +19,7 @@ class MealRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     __table_args__ = (
+        UniqueConstraint("date", "meal_type", name="uq_date_meal_type"),
         CheckConstraint("attendance >= 0", name="check_positive_attendance"),
         CheckConstraint("meals_prepared >= 0", name="check_positive_prepared"),
         CheckConstraint("meals_consumed >= 0", name="check_positive_consumed"),
@@ -30,6 +32,7 @@ class PredictionRecord(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     prediction_date = Column(Date, index=True, nullable=False)
+    meal_type = Column(String(20), nullable=False, default="lunch")
     day_of_week = Column(String(20), nullable=False)
     expected_attendance = Column(Integer, nullable=False)
     predicted_demand = Column(Float, nullable=False)
