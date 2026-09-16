@@ -1,23 +1,33 @@
 const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || '/api';
 
+const fetchWithHeaders = (url, options = {}) => {
+  return fetch(url, {
+    ...options,
+    headers: {
+      'Bypass-Tunnel-Reminder': 'true',
+      ...(options.headers || {})
+    }
+  });
+};
+
 export const api = {
   // 1. Dashboard statistics
   async getDashboardStats() {
-    const res = await fetch(`${API_BASE}/dashboard/statistics`);
+    const res = await fetchWithHeaders(`${API_BASE}/dashboard/statistics`);
     if (!res.ok) throw new Error('Failed to fetch dashboard statistics');
     return res.json();
   },
 
   // 2. Weekday pattern distributions
   async getWeekdayPatterns() {
-    const res = await fetch(`${API_BASE}/analytics/weekday-patterns`);
+    const res = await fetchWithHeaders(`${API_BASE}/analytics/weekday-patterns`);
     if (!res.ok) throw new Error('Failed to fetch weekday analytics');
     return res.json();
   },
 
   // 3. Model comparison metrics
   async getModelPerformance() {
-    const res = await fetch(`${API_BASE}/model/performance`);
+    const res = await fetchWithHeaders(`${API_BASE}/model/performance`);
     if (!res.ok) throw new Error('Failed to fetch model metrics');
     return res.json();
   },
@@ -28,14 +38,14 @@ export const api = {
     if (mealType && mealType !== 'all') {
       url += `&meal_type=${mealType}`;
     }
-    const res = await fetch(url);
+    const res = await fetchWithHeaders(url);
     if (!res.ok) throw new Error('Failed to fetch operational records');
     return res.json();
   },
 
   // 5. Create new meal record
   async createRecord(recordData) {
-    const res = await fetch(`${API_BASE}/records`, {
+    const res = await fetchWithHeaders(`${API_BASE}/records`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(recordData),
@@ -49,7 +59,7 @@ export const api = {
 
   // 6. Update/modify existing meal record
   async updateRecord(id, recordData) {
-    const res = await fetch(`${API_BASE}/records/${id}`, {
+    const res = await fetchWithHeaders(`${API_BASE}/records/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(recordData),
@@ -63,7 +73,7 @@ export const api = {
 
   // 7. Delete meal record
   async deleteRecord(id) {
-    const res = await fetch(`${API_BASE}/records/${id}`, {
+    const res = await fetchWithHeaders(`${API_BASE}/records/${id}`, {
       method: 'DELETE',
     });
     if (!res.ok && res.status !== 204) {
@@ -74,7 +84,7 @@ export const api = {
 
   // 8. Predict demand & generate recommendations
   async predictDemand(predictionPayload) {
-    const res = await fetch(`${API_BASE}/predict`, {
+    const res = await fetchWithHeaders(`${API_BASE}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(predictionPayload),
@@ -88,8 +98,8 @@ export const api = {
 
   // 9. Get historical predictions list
   async getPredictions(limit = 20) {
-    const res = await fetch(`${API_BASE}/predictions?limit=${limit}`);
-    if (!res.ok) throw new Error('Failed to fetch predictions');
+    const res = await fetchWithHeaders(`${API_BASE}/predictions?limit=${limit}`);
+    if (!res.ok) throw new Error('Failed to fetch prediction history');
     return res.json();
   }
 };
